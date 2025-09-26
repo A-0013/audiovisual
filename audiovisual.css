@@ -1,3 +1,4 @@
+
 body {
     font-family: Arial, sans-serif;
     background: #000000;
@@ -7,9 +8,48 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    /*me when I understand css*/
 }
+
 h1 {
     color: #ffffff;
     margin-top: 0.5em;
+    margin-top: 5%;
+}
+
+#fileInput {
+    margin: 15px;
+    padding: 10px;
+    border: 2px solid #ff00e1;
+    border-radius: 8px;
+    background: #111;
+    color: #ff00d9;
+    cursor: pointer;
+}
+
+
+.eq {
+    /*If you're wondering why the indentation here is weird, I stole this from mdn docs*/
+    /*not all of it, I forgot how to do something but I'm not saying what because its embarassing*/
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 80px;
+  margin-bottom: 20px;
+}
+
+.bar {
+  width: 12px;
+  background: #ff1c51;
+  height: 20px; /* default height */
+  transition: height 0.1s ease;
+  border-radius: 2px;
+}
+
+.bar.selected {
+    background: #0eff42; /* lowk this green hurts my eyes but whatever*/
+}
+
+body > * {
+    margin-bottom: 25px;
 }
