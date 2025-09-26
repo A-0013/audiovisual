@@ -94,12 +94,12 @@ fileInput.addEventListener("change", function(e)
 
         //this is top 10 worst ways to program something oat who cares tho
         function updateSelection() {
-            bars.forEach((bar, i) => {
+        bars.forEach((bar, i) => {
             //what w3 schools does to a mfer
             const inRange = selStart !== null && selEnd !== null && i >= Math.min(selStart, selEnd) && i <= Math.max(selStart, selEnd);
             bar.classList.toggle("selected", inRange);
         });
-        }
+      }
 
       //select the bars
         bars.forEach((bar, i) => {
