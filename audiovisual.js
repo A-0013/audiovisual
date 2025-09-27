@@ -1,4 +1,3 @@
-
 // audio setup
 
 //nonchalant audiocontext setup
@@ -31,6 +30,82 @@ fileInput.addEventListener("change", function(e)
     // fractal setup
     const canvas = document.getElementById("fractal-canvas");
     const ctx = canvas.getContext("2d");
+    
+    // parameter map setup
+    const paramCanvas = document.getElementById("parameter-canvas");
+    const paramCtx = paramCanvas.getContext("2d");
+    
+    // julia set parameters (can be modified by clicking the parameter map)
+    let baseC = { re: -0.8, im: 0.27015 };
+    
+    function drawParameterMap() {
+        const width = paramCanvas.width;
+        const height = paramCanvas.height;
+        const imageData = paramCtx.createImageData(width, height);
+        
+        // map the canvas to complex plane (roughly -2 to 2 for both real and imaginary)
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const cRe = (x - width/2) * 4 / width;
+                const cIm = (y - height/2) * 4 / height;
+                
+                // quick test to see if this point makes an interesting julia set
+                // we'll just do a few iterations to get a rough idea
+                let zx = 0, zy = 0;
+                let i = 0;
+                const maxIter = 50;
+                while (zx * zx + zy * zy < 4 && i < maxIter) {
+                    let tmp = zx * zx - zy * zy + cRe;
+                    zy = 2.0 * zx * zy + cIm;
+                    zx = tmp;
+                    i++;
+                }
+                
+                const pixelIndex = (y * width + x) * 4;
+                // color based on iteration count for a preview
+                if (i === maxIter) {
+                    imageData.data[pixelIndex] = 20;     // r
+                    imageData.data[pixelIndex + 1] = 20; // g  
+                    imageData.data[pixelIndex + 2] = 60; // b
+                } else {
+                    const intensity = (i / maxIter) * 255;
+                    imageData.data[pixelIndex] = intensity * 0.3;
+                    imageData.data[pixelIndex + 1] = intensity * 0.6;
+                    imageData.data[pixelIndex + 2] = intensity * 0.9;
+                }
+                imageData.data[pixelIndex + 3] = 255; // alpha
+            }
+        }
+        paramCtx.putImageData(imageData, 0, 0);
+        
+        // draw crosshairs at current selection
+        paramCtx.strokeStyle = '#ff0000';
+        paramCtx.lineWidth = 2;
+        const currentX = (baseC.re * paramCanvas.width / 4) + paramCanvas.width/2;
+        const currentY = (baseC.im * paramCanvas.height / 4) + paramCanvas.height/2;
+        
+        // draw crosshairs
+        paramCtx.beginPath();
+        paramCtx.moveTo(currentX - 10, currentY);
+        paramCtx.lineTo(currentX + 10, currentY);
+        paramCtx.moveTo(currentX, currentY - 10);
+        paramCtx.lineTo(currentX, currentY + 10);
+        paramCtx.stroke();
+    }
+    
+    // add click handler for parameter map
+    paramCanvas.addEventListener('click', (e) => {
+        const rect = paramCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // convert click position to complex number
+        baseC.re = (x - paramCanvas.width/2) * 4 / paramCanvas.width;
+        baseC.im = (y - paramCanvas.height/2) * 4 / paramCanvas.height;
+        
+        // redraw parameter map with new crosshairs
+        drawParameterMap();
+    });
 
     function drawJuliaFractal(shift) {
         //set the canvas size up
@@ -39,9 +114,9 @@ fileInput.addEventListener("change", function(e)
         const height = canvas.height;
         const imageData = ctx.createImageData(width, height);
 
-        //set parameters, imaginary and real parts
-        const cRe = -0.8 + (shift/300) * 0.5;
-        const cIm = 0.27015 + (shift/300) * 0.4;
+        //set parameters, imaginary and real parts (now with audio modulation)
+        const cRe = baseC.re + (shift/300) * 0.5;
+        const cIm = baseC.im + (shift/300) * 0.4;
 
         const maxIter = 100;
         //keep cycling thru the stuff to draw picture
@@ -129,33 +204,41 @@ fileInput.addEventListener("change", function(e)
         // change the fractal based on the range given by eq bars
         const chunkSize = Math.floor(freq.length / bars.length);
         let selectedValues = [];
-        for (let i = selStart; i <= selEnd; i++) {
-            //figure out size and then average
+        
+        // FIX: Only process if we have a valid selection, and ensure proper range
+        if (selStart !== null && selEnd !== null) {
+            const startIdx = Math.min(selStart, selEnd);
+            const endIdx = Math.max(selStart, selEnd);
+            
+            for (let i = startIdx; i <= endIdx; i++) {
+                //figure out size and then average
+                const start = i * chunkSize;
+                const end = start + chunkSize;
+                const slice = freq.slice(start, end);
+                const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+                selectedValues.push(avg);
+            }
+        }
+        
+        //define variables for everything because who care about memory you're probably running this on chrome anyway
+        const avgSelected = selectedValues.length > 0 ? selectedValues.reduce((a,b)=>a+b,0)/selectedValues.length : 0;
+
+        const baseline = 100;
+        const delta = avgSelected - baseline;
+        const shift = Math.max(Math.min(delta * 2, 300), -300);
+        drawJuliaFractal(shift);
+
+        //more bar stuff, which seems redundant but breaks it if I don't add it
+        bars.forEach((bar, i) => {
             const start = i * chunkSize;
             const end = start + chunkSize;
             const slice = freq.slice(start, end);
+            //more math
             const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        selectedValues.push(avg);
-    }
-    //define variables for everything because who care about memory you're probably running this on chrome anyway
-    const avgSelected = selectedValues.reduce((a,b)=>a+b,0)/selectedValues.length || 0;
-
-    const baseline = 100;
-    const delta = avgSelected - baseline;
-    const shift = Math.max(Math.min(delta * 2, 300), -300);
-    drawJuliaFractal(shift);
-
-    //more bar stuff, which seems redundant but breaks it if I don't add it
-    bars.forEach((bar, i) => {
-        const start = i * chunkSize;
-        const end = start + chunkSize;
-        const slice = freq.slice(start, end);
-        //more math
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        const percent = avg / 255;
-        bar.style.height = `${10 + percent * 90}px`;
-        //if you're wondering why some of this code is bad and some looks good, I only had to google like 40% of it, the other 60% was stuff I remmebered from freshman year
-    });
+            const percent = avg / 255;
+            bar.style.height = `${10 + percent * 90}px`;
+            //if you're wondering why some of this code is bad and some looks good, I only had to google like 40% of it, the other 60% was stuff I remmebered from freshman year
+        });
     }
 
     animate();
